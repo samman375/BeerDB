@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>COMP3311 21T3 - Assignment 1</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+<link rel='stylesheet' type='text/css' href='https://www.cse.unsw.edu.au/~cs3311/21T3//course.css'>
+</head>
+<body>
+<div class="container"></head>
+<body>
+<div align='center'>
+<table width='100%' border='0'>
+<tr valign='top'>
+<td align='left' width='25%'>
+  <span class='tiny'><a href="https://www.cse.unsw.edu.au/~cs3311/21T3/">COMP3311 21T3</a></span>
+</td>
+<td align='center' width='50%'>
+  <span class='heading'>Assignment 1</span><br>
+  <span class='subheading'>Data Models for BeerDB</span>
+</td>
+<td align='right' width='25%'>
+  <span class='tiny'><a href="https://www.cse.unsw.edu.au/~cs3311/21T3/">Database Systems</a></span>
+</td>
+</table>
+</div><div style="text-align:center;font-size:80%;color:#555555;margin-top:5px;">
+Last updated: <b>Monday 27th September 10:55pm</b> <br>
+Most recent changes are shown in <span class="red">red</span> ...
+older changes are shown in <span class="brown">brown</span>. <br>
+</div><p style='text-align:center'><a href='index.php'>[Assignment Spec]</a>&nbsp;&nbsp;<b>[Database Design]</b>&nbsp;&nbsp;<a href='examples.php'>[Examples]</a>&nbsp;&nbsp;<a href='fixes.php'>[Fixes+Updates]</a></p>
+
+
+<h3>Introduction</h3>
+<p>
+This gives both an overview and a detailed
+description of the beer database for this assignment.
+The overview is expressed as an ER diagram;
+the detail is give via an annotated SQL schema.
+</p>
+
+<h3>ER Model of BeerDB</h3>
+<p>
+Most entities have an ID field as the primary key.
+We wouldn't normally do this at the ER level, but
+none of the entities seemed to have obvious and
+compact primary keys.
+<p>
+
+<h4>Relationships between entities</h4>
+<p>Notes:</p>
+<ul>
+<li> every beer is brewed by some brewery
+<li> several breweries may collaborate on one beer
+<li> every beer is associated to a style
+<li> the ingredients class hierarchy as a bit contrived,
+but would be useful if we wanted different information for each
+of the different type of ingredient (e.g. colour for grains)
+<li> sometimes we may not know the ingredients in a beer
+<li> we know at least the country where each brewery is located
+</ul>
+<br/>
+<p>
+<center> <img src="Pics/schema.png"> </center>
+</p>
+
+<h4>Attributes of entities</h4>
+<p>
+<center> <img src="Pics/entities.png"> </center>
+</p>
+
+<h3>SQL Schema for BeerDB</h3>
+<p>Notes:</p>
+<ul>
+<li> n:m relationships are implemented by a new table
+<li> 1:n relationships are implemented by a FK attribute
+<li> the <tt>Ingredients</tt> class hierarchy is implemented by the single-table mapping
+<li> new types and domains aim to provide more readable table definitions
+</ul>
+<br/>
+
+<p><span class='fname'>schema.sql</span><pre>-- COMP3311 21T3 Assignment 1
+--
+-- BeerDB Schema
+-- Original version: John Shepherd (Sept 2021)
+--
+-- To keep the schema a little shorter, I have ignored my usual
+-- convention of putting foreign key definitions at the end of
+-- the table definition.
+--
+-- Some general naming principles:
+--   max 10 chars in field names
+--   all entity tables are named using plural nouns
+--   for tables with unique numeric identifier, always call the field &quot;id&quot;
+--   for cases where there's a long name and a short name for something,
+--      use &quot;name&quot; for the short version of the name (typically for display),
+--      and use &quot;longname&quot; for the complete version of the name (which might
+--      typically be used in lists of items)
+--   for foreign keys referring to an &quot;id&quot; field in the foreign relation,
+--      use the singular-noun name of the relation as the field name
+--      OR use the name of the relationship being represented
+--
+-- Null values:
+--  for each relation, a collection of fields is identified as being
+--    compulsory (i.e. without them the data isn't really usable) and
+--    they are all defined as NOT NULL
+--  reminder: all of the primary keys (e.g. &quot;id&quot;) are non-NULL
+--  note also that fields that are allowed to be NULL will need to be
+--    handled specially whenever they are displayed e.g. in a web-based
+--    interface to this schema
+--
+
+-- Types/Domains
+
+create type IngredientType as enum ('hop','grain','adjunct');
+create type ContainerType as enum ('bottle','can','growler','keg');
+
+create domain YearValue as integer check (value between 1000 and 2100);
+create domain MilliLiters as integer check (value &gt; 0);
+create domain URLvalue as text check (value like '%.%');  -- weak check
+create domain ABVvalue as real check (value between 0.0 and 100.0);
+create domain IBUvalue as integer check (value between 0 and 200);
+
+-- Tables
+
+create table Locations (
+	id          integer,  -- would normally use serial
+	country     text not null,  -- must at least know country
+	region      text,  -- state or shire or ...
+	metro       text,  -- metroploitan area (e.g. Sydney)
+	town        text,  -- in metro area =&gt; suburb, outside metro =&gt; town
+	primary key (id)
+);
+
+create table Styles (
+	id          integer,  -- would normally use serial
+	name        text not null,  -- name of style (e.g. lager, IPA)
+	min_abv     ABVvalue not null,
+	max_abv     ABVvalue not null,
+	primary key (id)
+);
+
+create table Ingredients (
+	id          integer,  -- would normally use serial
+	itype       IngredientType not null,
+	name        text not null,
+	primary key (id)
+);
+
+create table Breweries (
+	id          integer,  -- would normally use serial
+	name        text not null,
+	founded     YearValue,
+	website     URLvalue,
+	located_in  integer not null references Locations(id),
+	primary key (id)
+);
+
+create table Beers (
+	id          integer,  -- would normally use serial
+	name        text not null,
+	brewed      YearValue,
+	style       integer not null references Styles(id),
+	ABV         ABVvalue not null,
+	IBU         IBUvalue,
+	sold_in     ContainerType,
+	volume      MilliLiters,
+	notes       text,
+	rating      integer not null check (rating between 0 and 10),
+	primary key (id)
+);
+
+create table Contains (
+	beer        integer references Beers(id),
+	ingredient  integer references Ingredients(id),
+	primary key (beer,ingredient)
+);
+
+create table Brewed_by (
+	beer        integer references Beers(id),
+	brewery     integer references Breweries(id),
+	primary key (beer,brewery)
+);
+</pre>
+
+</div></body>
+</html>

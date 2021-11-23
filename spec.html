@@ -1,0 +1,575 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>COMP3311 21T3 - Assignment 1</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+<link rel='stylesheet' type='text/css' href='https://www.cse.unsw.edu.au/~cs3311/21T3//course.css'>
+</head>
+<body>
+<div class="container"></head>
+<body>
+<div align='center'>
+<table width='100%' border='0'>
+<tr valign='top'>
+<td align='left' width='25%'>
+  <span class='tiny'><a href="https://www.cse.unsw.edu.au/~cs3311/21T3/">COMP3311 21T3</a></span>
+</td>
+<td align='center' width='50%'>
+  <span class='heading'>Assignment 1</span><br>
+  <span class='subheading'>Queries and Functions on BeerDB</span>
+</td>
+<td align='right' width='25%'>
+  <span class='tiny'><a href="https://www.cse.unsw.edu.au/~cs3311/21T3/">Database Systems</a></span>
+</td>
+</table>
+</div><div style="text-align:center;font-size:80%;color:#555555;margin-top:5px;">
+Last updated: <b>Friday 1st October 10:57pm</b> <br>
+Most recent changes are shown in <span class="red">red</span> ...
+older changes are shown in <span class="brown">brown</span>. <br>
+</div><p style='text-align:center'><b>[Assignment Spec]</b>&nbsp;&nbsp;<a href='schema.php'>[Database Design]</a>&nbsp;&nbsp;<a href='examples.php'>[Examples]</a>&nbsp;&nbsp;<a href='fixes.php'>[Fixes+Updates]</a></p>
+
+
+<h2>Aims</h2>
+<p>
+This assignment aims to give you practice in
+</p>
+<ul>
+<li> reading and understanding a small relational schema (BeerDB)
+<li> implementing SQL queries and views to satisfy requests for information
+<li> implementing PLpgSQL functions to aid in satisfying requests for information
+</ul>
+<p>
+The goal is to build some useful data access operations on the BeerDB
+database,
+which contains a wealth of information about everyone's* favourite beverage,
+One aim of this assignment is to use SQL queries (packaged
+as views) to extract such information.
+Another is to build PlpgSQL functions that can support
+higher-level activities, such as might be needed in a Web
+interface.
+</p>
+<p style="font-size:80%">
+* well, mine anyway ...
+</p>
+
+<h2>Summary</h2>
+<p>
+<table cellpadding="8">
+<tr valign="top">
+<td> <b>Submission</b>: </td>
+<td> Login to Course Web Site &gt; Assignments
+	&gt; Assignment 1 &gt; [Submit] &gt; upload <tt>ass1.sql</tt><br>
+	or, <br/>
+	on a CSE server, <tt>give cs3311 ass1 ass1.sql</tt> </td>
+</tr>
+<tr valign="top">
+<td> <b>Required Files</b>: </td>
+<td> <tt>ass1.sql</tt> &nbsp; <small>(contains both SQL views and PLpgSQL functions)</small> </td>
+</tr>
+<tr valign="top">
+<td> <b>Deadline</b>: </td>
+<td> 21:00 Friday 15 October </td>
+</tr>
+<tr valign="top">
+<td> <b>Marks</b>: </td>
+<td> <b>15 marks</b> toward your total mark for this course </td>
+</tr>
+<tr valign="top">
+<td> <b>Late Penalty</b>: </td>
+<td> 0.1 <i>marks</i> off the ceiling mark for each hour late </td>
+</tr>
+</table>
+<p>
+How to do this assignment:
+</p>
+<ul>
+<li> read this specification carefully and completely
+<li> create a directory for this assignment
+<li> copy the supplied files into this directory
+<li> login to <tt>d.cse</tt> and run your PostgreSQL server**
+	 (or run a PostgreSQL servr installed on your home machine)
+<li> load the database and start exploring
+<li> complete the tasks below by editing <tt>ass1.sql</tt>
+<li> submit <tt>ass1.sql</tt> via WebCMS or <tt>give</tt>
+</ul>
+<p>
+Details of the above steps are given below. Note that you can
+put the files wherever you like; they do not have to be under
+your <tt>/srvr</tt> directory. You also edit your SQL files
+on hosts other than <tt>d.cse</tt>. The only time that
+you need to use <tt>d.cse</tt> is to manipulate your database.
+Since you can work at home machine, you don't have to use
+<tt>d.cse</tt> at all while <i>developing</i> your solution,
+but you should definitely test it there before submitting.
+</p>
+
+<h2>Introduction</h2>
+
+<p>
+In order to work with a database, it is useful to have some
+background in the domain of data being stored.
+Here is a very quick tour of <b>beer</b>.
+If you want to know more, see the
+<a target="_new" href="https://en.wikipedia.org/wiki/Portal:Beer">Wikipedia Beer Portal</a>.
+<p>
+Beer is a fermented drink based on grain, yeast, hops and water.
+The grain is typically malted barley, but wide variety of other
+grains (e.g. oats, rye) can be used.
+There are a wide variety of beers, differing in the grains used,
+the yeast strain, and the hops.
+More highly roasted grains produce darker beers, different types
+of yeast produce different flavour profiles, and hops provide
+aroma and bitterness.
+To add even more variety, adjuncts (e.g. sugar, chocolate,
+flowers, pine needles, to name but a few) can be added.
+</p>
+<p>
+The following diagram gives a hint of the variety of beer styles:
+</p>
+<center>
+<img src="Pics/beers.jpg">
+</center>
+<br>
+<p>
+To build a database on beer, we need to consider:
+</p>
+<ul>
+<li> beer styles (e.g. lager, IPA, stout, etc., etc.)
+<li> ingredients (e.g. varieties of hops and grains, and adjuncts)
+<li> breweries, the facilities where beers are brewed
+<li> beers, specific recipes following a style, and made in a particular brewery
+</ul>
+<p>
+Specific properties that we want to consider:
+</p>
+<ul>
+<li> ABV = alcohol by volume, a measure of a beer's strength
+<li> IBU = international bitterness units
+<li> each beer style has a range of ABVs for beers in that style
+<li> for each beer, we would like to store
+<ul>
+<li> its name (brewers like to use bizarre or pun-based names for their beers)
+<li> its style, actual ABV, actual IBU (optional), year it was brewed
+<li> type and size of containers it's sold in (e.g. 375mL can)
+<li> its ingredients (usually a partial list because brewers don't want to reveal too much)
+</ul>
+<li> for each brewery, we would like to store
+<ul>
+<li> its name, its location, the year it was founded, its website
+</ul>
+</ul>
+<p>
+The schema is described in more detail both as an ER model
+and an SQL schema in the <a href="schema.php">schema page</a>.
+</p>
+
+<h2>Doing this Assignment</h2>
+
+<p>
+The following sections describe how to carry out this assignment.
+Some of the instructions must be followed exactly; others require
+you to exercise some discretion. The instructions are targetted at
+people doing the assignment on <tt>d.cse</tt>. If you plan to work
+on this
+assignment at home on your own computer, you'll need to adapt the
+instructions to <q>local conditions</q>.
+</p>
+<p>
+If you're doing your assignment on the CSE machines,
+some commands must be carried out on <tt>d.cse</tt>,
+while others can (and probably should) be done on a
+CSE machine other than <tt>d.cse</tt>.
+In the examples below, we'll use <tt>vxdb$</tt> to
+indicate that the comand must be done on <tt>d.cse</tt>
+and <tt>cse$</tt> to indicate that it can be done elsewhere.
+</p>
+
+<h3>Setting Up</h3>
+<p>
+The first step in setting up this assignment is to set up a
+directory to hold your files for this assignment.
+</p>
+<pre>
+cse$ <b>mkdir /my/dir/for/ass1</b>
+cse$ <b>cd /my/dir/for/ass1</b>
+cse$ <b>cp /home/cs3311/web/21T3/assignments/ass1/ass1.sql ass1.sql</b>
+cse$ <b>cp /home/cs3311/web/21T3/assignments/ass1/ass1.dump ass1.dump</b>
+</pre>
+<p>
+This gives you a template for the SQL views and PLpgSQL functions
+that you need to submit.
+You edit this file, (re)load the definitions into the database
+you created for the assignment, and test it there.
+</p>
+<p class="red">
+NOTE: ass1.sql is currently not complete
+</p>
+<p>
+Speaking of the database, we have a modest sized database of
+all the beers that I've tasted over the last few years.
+We make this available as a PostgreSQL dump file.
+If you're working at home, you will need to copy it
+onto your home machine to load the database.
+</p>
+<p>
+The next step is to set up your database:
+</p>
+<pre>
+<span class="comment">... login to d.cse, source env, run your server as usual ...</span>
+<span class="comment">... if you already had such a database</span>
+vxdb$ <b>dropdb ass1</b>
+<span class="comment">... create a new empty atabase</span>
+vxdb$ <b>createdb ass1</b>
+<span class="comment">... load the database, saving the output in a file called log</span>
+vxdb$ <b>psql ass1 -f ass1.dump > log 2>&1</b>
+<span class="comment">... check for error messages in the log; should be none</s/span>
+vxdb$ <b>grep ERR log</b>
+<span class="comment">... examine the database contents ...</span>
+vxdb$ <b>psql ass1</b>
+</pre>
+<p>
+The database loading should take less than 10 seconds on <tt>d.cse</tt>.
+The <tt>ass1.dump</tt> files contains the schema and data in a single
+file, along with a simple PLpgSQL function (<tt>dbpop*(</tt>).
+</p>
+<p>
+If you're running PostgreSQL at home, you'll need to load
+both <tt><a href="ass1.sql">ass1.sql</a></tt> and
+<tt><a href="ass1.dump">ass1.dump</a></tt>.
+</p>
+<p>
+You can grab the <tt>check1.sql</tt> script separately,
+once it becomes available.
+</p>
+<p>
+Think of some questions you could ask on the database (e.g. like
+the ones in the Online Problem-solving Sessions) and work out
+SQL queries to answer them.
+</p>
+<p>
+One useful query is
+</p>
+<pre>
+ass1=# <b>select * from dbpop();</b>
+</pre>
+<p>
+This will give you a list of tables and the number of tuples in each.
+The <tt>dbpop()</tt> function is written in PLpgSQL, and makes use of
+the PostgreSQL catalog. We'll look at this later in the term.
+</p>
+
+<h2>Your Tasks</h2>
+<p>
+Answer each of the following questions by typing SQL or PLpgSQL
+into the <tt>ass1.sql</tt> file.
+You may find it convenient to work on each question in a temporary
+file, so that you don't have to keep loading <em>all</em> of the
+other views and functions each time you change the one you're
+working on.
+Note that you can add as many auxuliary views and functions to
+<tt>ass1.sql</tt> as you want.
+However, make sure that <em>everything</em> that's required to
+make all of your views and functions work is in the
+<tt>ass1.sql</tt> file before you submit.
+</p>
+<p>
+Note #1: many of the queries are phrased in the singular e.g.
+"Find the beer that ...". Despite the use of "beer" (singular),
+it is possible that multiple beers satisfy the query. Because
+of this you should, in general, avoid the use of <tt>LIMIT 1</tt>.
+</p>
+<p>
+Note #2: the database is not a complete picture of beers in the
+Real World. Treat each question as being prefaced by "According
+to the BeerDB database ...".
+</p>
+<p>
+Note #3: you can assume that the names for styles and breweries
+are unique; you <em>cannot</em> assume this for beer names.
+</p>
+
+
+<h3>Q1 <span class='marks'>(2 marks)</span></h3>
+
+<p>
+What is the world's oldest brewery?
+Define an SQL view <tt>Q1(brewery)</tt> that gives its name.
+</p>
+
+
+<h3>Q2 <span class='marks'>(3 marks)</span></h3>
+
+<p>
+Nowadays, brewers often work together to make a beer.
+Such a beer is called a "collaboration beer" (or just
+"collab" for short) and is registered as being brewed
+by both brewers.
+Define an SQL view <tt>Q2(beer)</tt> that gives the
+names of all collaboration beers.
+</p>
+
+
+<h3>Q3 <span class='marks'>(2 marks)</span></h3>
+
+<p>
+What is the worst beer in the world (determined by its rating)?
+Define a view <tt>Q3(worst)</tt> that gives its name.
+There may be several equally worst beers.
+</p>
+
+
+<h3>Q4 <span class='marks'>(2 marks)</span></h3>
+
+<p>
+Beers are brewed according to a style, which indicates what
+colour the beer should be, how strong it should be, etc.
+Occasionally brewers stray outside the bounds for a style
+e.g. make a beer stronger than the maximum ABV for that style.
+Define a view <tt>Q4(beer,abv,style,max_abv)</tt> that gives
+information about any beers whose ABV is higher than the maximum
+ABV for their style. The view should give the beer name, its
+ABV, its style, and the maximum ABV for that style.
+</p>
+
+
+<h3>Q5 <span class='marks'>(2 marks)</span></h3>
+
+<p>
+What <i>style</i> of beer is most commonly brewed (as determined
+by the number of beers brewed to that style)?
+Define a view <tt>Q5(style)</tt> that gives the name of the
+most common style.
+</p>
+
+
+<h3>Q6 <span class='marks'>(3 marks)</span></h3>
+
+<p>
+Sometimes data entry can go wrong and two slightly different
+versions of a style name can be entered into the database.
+The difference might be a spelling mistake or a mismatch in
+upper/lower-case letters in the name. Spelling mistakes are
+difficult to determine, but case mismatches are easy to detect.
+Define a view <tt>Q6(style1,style2)</tt> that determines pairs
+of style names that differ only in the upper/lower case of
+their letters.
+The order of style names matters in the result tuple;
+the lexicographically smaller style
+name should be in <tt>style1</tt>.
+</p>
+
+
+<h3>Q7 <span class='marks'>(2 marks)</span></h3>
+
+<p>
+The partial participation line between Brewery and BrewedBy
+in the ER model for this database suggests that there may
+be breweries that haven't (so far) brewed any beers.
+Define a view <tt>Q7(brewery)</tt> that finds any such breweries.
+</p>
+
+
+<h3>Q8 <span class='marks'>(3 marks)</span></h3>
+
+<p>
+Some cities (<tt>metro</tt> attribute) are known
+as "hot-spots" for breweries.
+Define a view <tt>Q8(city,country)</tt> that finds
+the city which has the most breweries located in it
+and the country where that city is located..
+</p>
+
+
+<h3>Q9 <span class='marks'>(3 marks)</span></h3>
+
+<p>
+Some breweries concentrate on a small number of beer varieties,
+others are prolific experimenters and make many different styles.
+Write a view <tt>Q9(brewery,nstyles)</tt> that gives the name
+and count of styles made by that brewery, for all breweries that
+make more than 5 different styles.
+</p>
+
+
+<h3>Q10 <span class='marks'>(3 marks)</span></h3>
+
+<p>
+Write a PLpgSQL function that takes a style name, and prints a list of
+all the beers that are brewed in that style.
+</p>
+<pre>
+create or replace function Q10(_style text) returns setof BeerInfo ...
+</pre>
+<p>
+where <tt>BeerInfo</tt> is a tuple type that could be defined
+as follows:
+</p>
+<pre>
+create type BeerInfo as (beer text, brewery text, style text, year YearValue, abv ABVvalue)
+</pre>
+<p>
+You could define the type like this but (HINT) you might find it
+convenient to have a <tt>BeerInfo</tt> view that returns tuples
+of this type, in which case the type would be defined automatically.
+</p>
+<p>
+Note that the beer is a collaboration beer, all breweries should
+appear in the <tt>brewery</tt> attribute, separated by <tt>' + '</tt>
+and in alphabetical order on brewery name.
+Even if you include all of the collaborating breweries in the string,
+but they appear in a different order, your answer is not correct.
+</p>
+<p>
+If the <tt>_style</tt> string given as an argument doesn't exactly
+match any beer style name, then you should simply return zero tuples.
+</p>
+<p>
+Note that the underscore in the parameter name is important
+(i.e. should be <tt>_style</tt> not <tt>style</tt>).
+The reason for this will become obvious once you start
+writing the PLpgSQL code for the function.
+</p>
+<p>
+There are examples of how the function should behave in the
+<a href="examples.php">Examples page</a>.
+</p>
+
+<h3>Q11 <span class='marks'>(4 marks)</span></h3>
+
+<p>
+Write a PLpgSQL function that takes a string as argument
+and finds all beers that contain that string in their name
+</p>
+<pre>
+create or replace function Q11(partial_name text) returns setof text ...
+</pre>
+<p>
+The function returns one string (<tt>text</tt>) for each beer
+whose name contains <tt>partial_name</tt> which is formatted as follows:
+</p>
+<pre>
+"<i>Name of beer</i>", <i>Name of brewery or breweries</i>, <i>Beer style</i>, <i>abv value</i>% ABV
+</pre>
+<p>
+You must use exactly the same punctuation and spacing as the above.
+</p>
+<p>
+The breweries for collaboration beers must be handled the same as in Q10.
+</p>
+<p>
+String match should be case-insensitive, e.g. <tt>'al'</tt> would match
+<tt>'Pale <span class="red">Al</span>e'</tt>,
+<tt>'Imperi<span class="red">al</span> Stout'</tt>
+and many others.
+<p>
+There are examples of how the function should behave in the
+<a href="examples.php">Examples page</a>.
+</p>
+
+
+<h3>Q12 <span class='marks'>(6 marks)</span></h3>
+
+<p>
+Write a PostgreSQL function that takes a string as argument
+and gets information about all <i>breweries</i>
+that contain that string in their name:
+</p>
+<pre>
+create or replace function Q12(partial_name text) returns setof text ...
+</pre>
+Each brewery has the following strings
+</p>
+<pre>
+<i>Brewery name</i>, founded in <i>Foundation-year</i>
+located in <i>Location info</i>
+  "<i>Name of beer</i>", <i>Beer style</i>, <i>Year brewed</i>, <i>abv_value</i>% ABV
+</pre>
+<p>
+The third line is repeated once for each beer the brewery makes.
+If the brewery makes (so far) no beers, write a single line containing
+</p>
+<pre>
+No known beers
+</pre>
+<p>
+You must use the same punctutation and spacing as above.
+</p>
+<p>
+The "<tt><i>Location info</i></tt>" is a comma-separated string,
+determined as follows:
+</p>
+<ul>
+<li> the country is always the last element in the string
+<li> if a region is known, include that in the location string
+<li> if both town and metro are known, include just the town
+<li> if only the metro is known, include that
+<li> if only the town is known, include that
+</ul>
+<p>
+Examples:
+</p>
+<pre>
+Thornbury, Victoria, Australia        <span class="comment">-- all four components are known</span>
+Marche-en-Famenne, Belgium            <span class="comment">-- no region or metro</span>
+San Diego, California, United States  <span class="comment">-- no town</span>
+Orange, New South Wales, Australia    <span class="comment">-- no metro</span>
+</pre>
+<p>
+String matching should be case-insensitive e.g. <tt>'mo'</tt> would match
+<tt>'Chur (Behe<span class='red'>mo</span>th) Brewing'</tt>, <tt>'<span class="red">Mo</span>dern Times Beer'</tt>
+and many others.
+</p>
+<p>
+The list of beers should be arranged in ascending order of year.
+If there are multiple beers from a single year, order them by the
+beer name.
+If a beer is a collaboration beer, there is no need to mention the
+other brewery.
+</p>
+<p>
+There are examples of how the function should behave in the
+<a href="examples.php">Examples page</a>.
+</p>
+
+<br/>
+<h2>Submission and Testing</h2>
+<p>
+We will test your submission as follows:
+</p>
+<ul>
+<li>
+create a testing subdirectory
+<li>
+create a new database <tt><i>TestingDB</i></tt> and initialise it with <code>ass1.dump</code>
+<li>
+load your work via the command: &nbsp; <code>psql <i>TestingDB</i> -f ass1.sql</code> &nbsp; (using your <tt>ass1.sql</tt>)
+<li>
+run auto-marking on your views and functions
+using a script that we will eventually make available to you
+</ul>
+</p>
+<p class="red">
+Note that there is a time-limit on the execution of queries.
+If any query takes longer than 3 seconds to run (you can check
+this using the <b>\timing</b> flag) your mark for that query
+will be reduced.
+</p>
+<p>
+Your submitted code must be <em>complete</em> so that when we do the
+above, your <tt>ass1.sql</tt> will load without errors.
+If your code does not work when installed for testing as described
+above and the reason for the failure is that your <tt>ass1.sql</tt>
+did not contain all of the required definitions,
+you will be penalised by a 1 mark administrative penalty.
+</p>
+<p>
+Before you submit, it would be useful to test out whether
+the files you submit will work by following a similar
+sequence of steps to those noted above.
+</p>
+
+<br>
+<p>Have fun, <i>jas</i></p>
+
+</div></body>
+</html>
