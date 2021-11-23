@@ -1,7 +1,7 @@
 - Assignment was completed individually in T3 2021 for COMP3311: Database Systems.
 - Task was to write a range of queries for a provided database of beers.
 - This project had a focus on writting SQL queries and PLpgSQL functions.
-- Project Spec can be found in spec.html.
+- Project Spec can be found in spec.html with a database schema in schema.html.
 - To run application:
     - PostgreSQL must be installed
     - To load files:
