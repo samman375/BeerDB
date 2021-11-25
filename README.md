@@ -12,3 +12,4 @@
       $ psql beers
       ```
     - Run queries in postgres by the view names
+- A final mark of 93/100 was awarded and was worth 15% of grade.
